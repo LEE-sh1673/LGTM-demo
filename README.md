@@ -73,4 +73,3 @@ Get Trace ID and tags (here is `compose.service`) defined in Tempo data source f
 Get Trace ID from log (regex defined in Loki data source), then query in Tempo.
 
 ![Logs to Traces](./images/logs-to-traces.png)
->>>>>>> 94839d6 (chore: setup project from ref.)

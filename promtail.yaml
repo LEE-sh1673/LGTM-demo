@@ -1,35 +1,43 @@
-# https://grafana.com/docs/loki/latest/clients/promtail/configuration/
-# https://docs.docker.com/engine/api/v1.41/#operation/ContainerList
+# server 정보
 server:
   http_listen_port: 9080
   grpc_listen_port: 0
 
+# 로그 수집 마지막 위치 정보
 positions:
   filename: /tmp/positions.yaml
 
+# Loki 서버의 위치
 clients:
   - url: http://loki:3100/loki/api/v1/push
 
+# 수집기에서 수행할 job 정의
 scrape_configs:
   - job_name: flog_scrape
+  
+    # Describes how to use the Docker daemon API to discover containers running on
+    # the same host as Promtail.
     docker_sd_configs:
+      # Docker 데몬에 연결하여 컨테이너를 검색하고 Docker 소켓에서 stdout/stderr를 수집
       - host: unix:///var/run/docker.sock
         refresh_interval: 5s
-        # filters:
-        #   - name: label
-        #     values: ["logging=promtail"]
+        filters:
+          - name: label
+            values: ["logging=promtail"]
+
+    # Describes how to relabel targets to determine if they should
+    # be processed.
     relabel_configs:
+
+      # 컨테이너 이름에 대해 역슬래쉬(/)를 지우고 해당 값에 'container' 라벨을 만든다.
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
         target_label: 'container'
+ 
+      # 표준출력(stdout)과 표준에러(stderr) 스트림에 대해 'logstream' 라벨을 만든다.
       - source_labels: ['__meta_docker_container_log_stream']
         target_label: 'logstream'
+      
+      # 각 컨테이너의 라벨에 대해 'job' 라벨을 만든다
       - source_labels: ['__meta_docker_container_label_logging_jobname']
         target_label: 'job'
-  
-    pipeline_stages:
-      - multiline:
-          firstline: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3}'
-          max_wait_time: 3s
-      - regex:
-          expression: '^(?P<date>\d{4}-\d{2}-\d{2}) (?P<time>\d{2}:\d{2}:\d{2}.\d{3}) (?P<message>(?s:.*))$$'

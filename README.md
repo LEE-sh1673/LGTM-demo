@@ -50,8 +50,8 @@ This demo project is a Spring Boot version of [FastAPI with Observability](https
 
 Grafana provides a great solution, which could observe specific actions in service between traces, metrics, and logs through trace ID and exemplar.
 
-![Observability Correlations](./images/observability-correlations.jpeg)
-
+<!-- ![Observability Correlations](./images/observability-correlations.jpeg) -->
+![alt text](image.png)
 Image Source: [Grafana](https://grafana.com/blog/2021/03/31/intro-to-exemplars-which-enable-grafana-tempos-distributed-tracing-at-massive-scale/)
 
 ### Metrics to Traces

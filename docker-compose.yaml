@@ -1,4 +1,7 @@
-x-logging: &default-logging
+version: '3.9'
+
+x-logging:
+  &default-logging
   driver: loki
   options:
     loki-url: 'http://localhost:3100/api/prom/push'
@@ -9,10 +12,12 @@ x-logging: &default-logging
       - regex:
           expression: '^(?P<date>\d{4}-\d{2}-\d{2}) (?P<time>\d{2}:\d{2}:\d{2}.\d{3}) (?P<message>(?s:.*))$$'
 
-version: "3.4"
+x-labels:
+  &default-labels
+  logging: "promtail"
+  logging_jobname: "containerlogs"
 
 services:
-
   # Infrastructure
   promtail:
     image:  grafana/promtail:latest
@@ -22,17 +27,22 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
     command: -config.file=/etc/promtail/docker-config.yaml
+    ports:
+      - "9080:9080"
     depends_on:
       - loki
+    logging: *default-logging
 
   loki:
     image: grafana/loki:3.0.0
+    container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
 
   prometheus:
     image: prom/prometheus:v2.51.2
+    container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -46,7 +56,15 @@ services:
 
   tempo:
     image: grafana/tempo:2.4.1
-    command: [ "--target=all", "--storage.trace.backend=local", "--storage.trace.local.path=/var/tempo", "--auth.enabled=false" ]
+    container_name: tempo
+    volumes:
+      - ./tempo.yaml:/etc/tempo/config.yaml
+    command:
+      # - -config.file=/etc/tempo/config.yaml
+      - --target=all
+      - --storage.trace.backend=local
+      - --storage.trace.local.path=/var/tempo
+      - --auth.enabled=false
     ports:
       - "14250:14250"
       - "4317:4317"
@@ -70,8 +88,8 @@ services:
   # Applications
 
   app-a:
-    # build: ./app/
     image: ghcr.io/blueswen/spring-boot-observability/app:latest
+    container_name: app-a
     environment:
       - TARGET_ONE_HOST=app-b
       - TARGET_TWO_HOST=app-c
@@ -83,10 +101,11 @@ services:
     ports:
       - "8080:8080"
     logging: *default-logging
+    labels: *default-labels
 
   app-b:
-    # build: ./app/
     image: ghcr.io/blueswen/spring-boot-observability/app:latest
+    container_name: app-b
     environment:
       - TARGET_ONE_HOST=app-b
       - TARGET_TWO_HOST=app-c
@@ -98,10 +117,11 @@ services:
     ports:
       - "8081:8080"
     logging: *default-logging
+    labels: *default-labels
 
   app-c:
-    # build: ./app/
     image: ghcr.io/blueswen/spring-boot-observability/app:latest
+    container_name: app-c
     environment:
       - TARGET_ONE_HOST=app-b
       - TARGET_TWO_HOST=app-c
@@ -113,9 +133,11 @@ services:
     ports:
       - "8082:8080"
     logging: *default-logging
+    labels: *default-labels
 
   postgres:
     image: postgres:16.2
+    container_name: postgres
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -123,9 +145,13 @@ services:
     ports:
       - "5432:5432"
     logging: *default-logging
+    labels: *default-labels
 
   redis:
     image: redis:7.2.4
+    container_name: redis
     ports:
       - "6379:6379"
     logging: *default-logging
+    labels: *default-labels
+  
